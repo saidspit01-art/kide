@@ -1,0 +1,4 @@
+ret x = 0
+liw x < 3:
+    pirent "Привет!"
+    ret x = x + 1

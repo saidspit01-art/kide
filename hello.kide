@@ -1,0 +1,6 @@
+#$ Мой первый код на Kide
+
+pirent "Привет, мир!"
+ret x = 5
+pirent x
+Sakura

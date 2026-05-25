@@ -1,0 +1,5 @@
+ret x = 10
+fii x > 5:
+    pirent "x больше пяти"
+les:
+    pirent "x меньше пяти"

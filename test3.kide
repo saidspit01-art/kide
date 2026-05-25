@@ -1,0 +1,5 @@
+fedya privet():
+    pirent "Привет от Феди!"
+    pirent "Kide работает!"
+
+privet()
