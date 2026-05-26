@@ -1,0 +1,6 @@
+ret текст = "Привет Kide"
+find позиция = текст, Kide
+pirent позиция
+
+type какой = позиция
+pirent какой

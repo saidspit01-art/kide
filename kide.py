@@ -1,5 +1,7 @@
 import sys
 import random
+import time
+from datetime import datetime
 
 def evaluate_condition(condition, variables):
     parts = condition.split()
@@ -9,9 +11,9 @@ def evaluate_condition(condition, variables):
     left_val = resolve(left, variables)
     right_val = resolve(right, variables)
     if op == '>':
-        return left_val > right_val
+        return float(str(left_val)) > float(str(right_val))
     elif op == '<':
-        return left_val < right_val
+        return float(str(left_val)) < float(str(right_val))
     elif op == '==':
         return str(left_val) == str(right_val)
     elif op == '!=':
@@ -25,7 +27,10 @@ def resolve(value, variables):
     try:
         return int(value)
     except:
-        return value
+        try:
+            return float(value)
+        except:
+            return value
 
 def calc(expression, variables):
     expression = expression.strip()
@@ -35,12 +40,12 @@ def calc(expression, variables):
             a = resolve(parts[0].strip(), variables)
             b = resolve(parts[1].strip(), variables)
             try:
-                a, b = int(a), int(b)
-                if op == '+': return a + b
-                if op == '-': return a - b
-                if op == '*': return a * b
-                if op == '/': return a // b
-                if op == '%': return a % b
+                a, b = float(a), float(b)
+                if op == '+': return int(a + b) if a + b == int(a + b) else a + b
+                if op == '-': return int(a - b) if a - b == int(a - b) else a - b
+                if op == '*': return int(a * b) if a * b == int(a * b) else a * b
+                if op == '/': return int(a // b)
+                if op == '%': return int(a % b)
             except:
                 if op == '+':
                     return str(a) + str(b)
@@ -113,7 +118,7 @@ def run(lines, variables, functions):
             i += 1
             continue
 
-        # loin (длина текста)
+        # loin
         if line.startswith('loin '):
             parts = line[5:].split('=', 1)
             name = parts[0].strip()
@@ -125,7 +130,7 @@ def run(lines, variables, functions):
             i += 1
             continue
 
-        # jen (соединить)
+        # jen
         if line.startswith('jen '):
             parts = line[4:].split('=', 1)
             name = parts[0].strip()
@@ -186,6 +191,184 @@ def run(lines, variables, functions):
             with open(filename, 'r') as f:
                 imported = f.read().split('\n')
             run(imported, variables, functions)
+            i += 1
+            continue
+
+        # rot (округление)
+        if line.startswith('rot '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = round(float(value))
+            i += 1
+            continue
+
+        # abc (абсолютное)
+        if line.startswith('abc '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = abs(float(value))
+            i += 1
+            continue
+
+        # hlam (максимум)
+        if line.startswith('hlam '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            nums = [resolve(x.strip(), variables) for x in parts[1].split(',')]
+            variables[name] = max(nums)
+            i += 1
+            continue
+
+        # zolot (минимум)
+        if line.startswith('zolot '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            nums = [resolve(x.strip(), variables) for x in parts[1].split(',')]
+            variables[name] = min(nums)
+            i += 1
+            continue
+
+        # many (сумма)
+        if line.startswith('many '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            nums = [resolve(x.strip(), variables) for x in parts[1].split(',')]
+            variables[name] = sum(nums)
+            i += 1
+            continue
+
+        # type
+        if line.startswith('type '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = type(value).__name__
+            i += 1
+            continue
+
+        # int
+        if line.startswith('int '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = int(float(str(value)))
+            i += 1
+            continue
+
+        # str
+        if line.startswith('str '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = str(value)
+            i += 1
+            continue
+
+        # float
+        if line.startswith('float '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = float(str(value))
+            i += 1
+            continue
+
+        # split
+        if line.startswith('split '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            items = parts[1].strip().split(',', 1)
+            value = resolve(items[0].strip(), variables)
+            sep = items[1].strip().strip('"') if len(items) > 1 else ' '
+            variables[name] = str(value).split(sep)
+            i += 1
+            continue
+
+        # strip
+        if line.startswith('strip '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = str(value).strip()
+            i += 1
+            continue
+
+        # replace
+        if line.startswith('replace '):
+            parts = line[8:].split('=', 1)
+            name = parts[0].strip()
+            items = parts[1].strip().split(',')
+            value = resolve(items[0].strip(), variables)
+            old = items[1].strip().strip('"')
+            new = items[2].strip().strip('"')
+            variables[name] = str(value).replace(old, new)
+            i += 1
+            continue
+
+        # up (верхний регистр)
+        if line.startswith('up '):
+            parts = line[3:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = str(value).upper()
+            i += 1
+            continue
+
+        # do (нижний регистр)
+        if line.startswith('do '):
+            parts = line[3:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = str(value).lower()
+            i += 1
+            continue
+
+        # find
+        if line.startswith('find '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            items = parts[1].strip().split(',')
+            value = resolve(items[0].strip(), variables)
+            search = items[1].strip().strip('"')
+            variables[name] = str(value).find(search)
+            i += 1
+            continue
+
+        # repeat
+        if line.startswith('repeat '):
+            parts = line[7:].split('=', 1)
+            name = parts[0].strip()
+            items = parts[1].strip().split(',')
+            value = resolve(items[0].strip(), variables)
+            times = int(resolve(items[1].strip(), variables))
+            variables[name] = str(value) * times
+            i += 1
+            continue
+
+        # exit
+        if line == 'exit':
+            sys.exit()
+
+        # sleep
+        if line.startswith('sleep '):
+            seconds = float(resolve(line[6:].strip(), variables))
+            time.sleep(seconds)
+            i += 1
+            continue
+
+        # time
+        if line.startswith('time '):
+            name = line[5:].strip()
+            variables[name] = datetime.now().strftime('%H:%M:%S')
+            i += 1
+            continue
+
+        # date
+        if line.startswith('date '):
+            name = line[5:].strip()
+            variables[name] = datetime.now().strftime('%d.%m.%Y')
             i += 1
             continue
 

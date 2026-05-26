@@ -1,0 +1,5 @@
+repeat а = "Kide! ", 3
+pirent а
+
+replace б = "Привет мир", мир, Kide
+pirent б
