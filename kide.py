@@ -1,38 +1,50 @@
 import sys
+import random
 
 def evaluate_condition(condition, variables):
     parts = condition.split()
     left = parts[0]
     op = parts[1]
     right = parts[2]
-    left = int(variables.get(left, left))
-    right = int(variables.get(right, right))
+    left_val = resolve(left, variables)
+    right_val = resolve(right, variables)
     if op == '>':
-        return left > right
+        return left_val > right_val
     elif op == '<':
-        return left < right
+        return left_val < right_val
     elif op == '==':
-        return left == right
+        return str(left_val) == str(right_val)
+    elif op == '!=':
+        return str(left_val) != str(right_val)
     return False
 
 def resolve(value, variables):
     value = value.strip()
     if value in variables:
-        return int(variables[value])
-    return int(value)
+        return variables[value]
+    try:
+        return int(value)
+    except:
+        return value
 
 def calc(expression, variables):
-    if '+' in expression:
-        parts = expression.split('+')
-        return resolve(parts[0], variables) + resolve(parts[1], variables)
-    elif '-' in expression:
-        parts = expression.split('-')
-        return resolve(parts[0], variables) - resolve(parts[1], variables)
-    elif '*' in expression:
-        parts = expression.split('*')
-        return resolve(parts[0], variables) * resolve(parts[1], variables)
-    else:
-        return resolve(expression, variables)
+    expression = expression.strip()
+    for op in ['+', '-', '*', '/', '%']:
+        if op in expression:
+            parts = expression.split(op, 1)
+            a = resolve(parts[0].strip(), variables)
+            b = resolve(parts[1].strip(), variables)
+            try:
+                a, b = int(a), int(b)
+                if op == '+': return a + b
+                if op == '-': return a - b
+                if op == '*': return a * b
+                if op == '/': return a // b
+                if op == '%': return a % b
+            except:
+                if op == '+':
+                    return str(a) + str(b)
+    return resolve(expression, variables)
 
 def run(lines, variables, functions):
     i = 0
@@ -68,11 +80,13 @@ def run(lines, variables, functions):
 
         # pirent
         if line.startswith('pirent '):
-            value = line[7:]
+            value = line[7:].strip()
             if value.startswith('"') and value.endswith('"'):
                 print(value[1:-1])
             elif value in variables:
                 print(variables[value])
+            else:
+                print(calc(value, variables))
             i += 1
             continue
 
@@ -86,6 +100,118 @@ def run(lines, variables, functions):
             else:
                 variables[name] = calc(value, variables)
             i += 1
+            continue
+
+        # ask
+        if line.startswith('ask '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            prompt = parts[1].strip()
+            if prompt.startswith('"') and prompt.endswith('"'):
+                prompt = prompt[1:-1]
+            variables[name] = input(prompt + ' ')
+            i += 1
+            continue
+
+        # loin (длина текста)
+        if line.startswith('loin '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            value = parts[1].strip()
+            if value.startswith('"') and value.endswith('"'):
+                variables[name] = len(value[1:-1])
+            elif value in variables:
+                variables[name] = len(str(variables[value]))
+            i += 1
+            continue
+
+        # jen (соединить)
+        if line.startswith('jen '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            value = parts[1].strip()
+            items = value.split('+')
+            result = ''
+            for item in items:
+                item = item.strip()
+                if item.startswith('"') and item.endswith('"'):
+                    result += item[1:-1]
+                elif item in variables:
+                    result += str(variables[item])
+            variables[name] = result
+            i += 1
+            continue
+
+        # rand
+        if line.startswith('rand '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            nums = parts[1].strip().split()
+            a, b = int(nums[0]), int(nums[1])
+            variables[name] = random.randint(a, b)
+            i += 1
+            continue
+
+        # save
+        if line.startswith('save '):
+            parts = line[5:].split('=', 1)
+            filename = parts[0].strip()
+            value = parts[1].strip()
+            if value in variables:
+                value = str(variables[value])
+            elif value.startswith('"') and value.endswith('"'):
+                value = value[1:-1]
+            with open(filename, 'w') as f:
+                f.write(value)
+            i += 1
+            continue
+
+        # load
+        if line.startswith('load '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            filename = parts[1].strip()
+            if filename.startswith('"') and filename.endswith('"'):
+                filename = filename[1:-1]
+            with open(filename, 'r') as f:
+                variables[name] = f.read()
+            i += 1
+            continue
+
+        # imr
+        if line.startswith('imr '):
+            filename = line[4:].strip()
+            if not filename.endswith('.kide'):
+                filename += '.kide'
+            with open(filename, 'r') as f:
+                imported = f.read().split('\n')
+            run(imported, variables, functions)
+            i += 1
+            continue
+
+        # tri/katch
+        if line.startswith('tri:'):
+            try_block = []
+            catch_block = []
+            in_katch = False
+            i += 1
+            while i < len(lines):
+                inner = lines[i].strip()
+                if inner.startswith('katch:'):
+                    in_katch = True
+                    i += 1
+                    continue
+                if not lines[i].startswith(' ') and not lines[i].startswith('\t') and inner:
+                    break
+                if in_katch:
+                    catch_block.append(inner)
+                else:
+                    try_block.append(inner)
+                i += 1
+            try:
+                run(try_block, variables, functions)
+            except:
+                run(catch_block, variables, functions)
             continue
 
         # fii/les
@@ -102,7 +228,7 @@ def run(lines, variables, functions):
                     in_les = True
                     i += 1
                     continue
-                if inner.startswith('fii ') or (not inner.startswith(' ') and not inner.startswith('\t') and inner and not in_les and len(true_block) > 0):
+                if not lines[i].startswith(' ') and not lines[i].startswith('\t') and inner:
                     break
                 if in_les:
                     false_block.append(inner)
