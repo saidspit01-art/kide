@@ -1,0 +1,11 @@
+b64 код = "Привет Kide"
+pirent код
+
+fadd данные.txt = "первая строка"
+fadd данные.txt = "вторая строка"
+load текст = "данные.txt"
+pirent текст
+
+fcopy данные.txt, копия.txt
+fex есть = "копия.txt"
+pirent есть

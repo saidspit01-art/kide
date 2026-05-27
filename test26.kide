@@ -1,0 +1,11 @@
+list числа = 1, 2, 3, 4, 5
+shuffle числа
+pirent числа
+
+choice случайный = числа
+pirent случайный
+
+dict человек
+dadd человек, "имя", "Kide"
+jmake json = человек
+pirent json

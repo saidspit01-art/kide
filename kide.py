@@ -1,7 +1,18 @@
 import sys
 import random
 import time
+import os
+import math
+import json
+import base64
+import shutil
 from datetime import datetime
+
+try:
+    import requests
+    HAS_REQUESTS = True
+except:
+    HAS_REQUESTS = False
 
 def evaluate_condition(condition, variables):
     parts = condition.split()
@@ -41,14 +52,14 @@ def calc(expression, variables):
             b = resolve(parts[1].strip(), variables)
             try:
                 a, b = float(a), float(b)
-                if op == '+': return int(a + b) if a + b == int(a + b) else a + b
-                if op == '-': return int(a - b) if a - b == int(a - b) else a - b
-                if op == '*': return int(a * b) if a * b == int(a * b) else a * b
-                if op == '/': return int(a // b)
-                if op == '%': return int(a % b)
+                if op == '+': return int(a+b) if a+b == int(a+b) else a+b
+                if op == '-': return int(a-b) if a-b == int(a-b) else a-b
+                if op == '*': return int(a*b) if a*b == int(a*b) else a*b
+                if op == '/': return int(a//b)
+                if op == '%': return int(a%b)
             except:
                 if op == '+':
-                    return str(a) + str(b)
+                    return str(a)+str(b)
     return resolve(expression, variables)
 
 def run(lines, variables, functions):
@@ -194,7 +205,7 @@ def run(lines, variables, functions):
             i += 1
             continue
 
-        # rot (округление)
+        # rot
         if line.startswith('rot '):
             parts = line[4:].split('=', 1)
             name = parts[0].strip()
@@ -203,7 +214,7 @@ def run(lines, variables, functions):
             i += 1
             continue
 
-        # abc (абсолютное)
+        # abc
         if line.startswith('abc '):
             parts = line[4:].split('=', 1)
             name = parts[0].strip()
@@ -212,7 +223,7 @@ def run(lines, variables, functions):
             i += 1
             continue
 
-        # hlam (максимум)
+        # hlam
         if line.startswith('hlam '):
             parts = line[5:].split('=', 1)
             name = parts[0].strip()
@@ -221,7 +232,7 @@ def run(lines, variables, functions):
             i += 1
             continue
 
-        # zolot (минимум)
+        # zolot
         if line.startswith('zolot '):
             parts = line[6:].split('=', 1)
             name = parts[0].strip()
@@ -230,7 +241,7 @@ def run(lines, variables, functions):
             i += 1
             continue
 
-        # many (сумма)
+        # many
         if line.startswith('many '):
             parts = line[5:].split('=', 1)
             name = parts[0].strip()
@@ -307,7 +318,7 @@ def run(lines, variables, functions):
             i += 1
             continue
 
-        # up (верхний регистр)
+        # up
         if line.startswith('up '):
             parts = line[3:].split('=', 1)
             name = parts[0].strip()
@@ -316,7 +327,7 @@ def run(lines, variables, functions):
             i += 1
             continue
 
-        # do (нижний регистр)
+        # do
         if line.startswith('do '):
             parts = line[3:].split('=', 1)
             name = parts[0].strip()
@@ -369,6 +380,446 @@ def run(lines, variables, functions):
         if line.startswith('date '):
             name = line[5:].strip()
             variables[name] = datetime.now().strftime('%d.%m.%Y')
+            i += 1
+            continue
+
+        # list
+        if line.startswith('list '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            if ',' in parts[1]:
+                items = [resolve(x.strip(), variables) for x in parts[1].split(',')]
+                variables[name] = items
+            else:
+                variables[name] = []
+            i += 1
+            continue
+
+        # app (append)
+        if line.startswith('app '):
+            parts = line[4:].split(',', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            if name in variables and isinstance(variables[name], list):
+                variables[name].append(value)
+            i += 1
+            continue
+
+        # dda (remove)
+        if line.startswith('dda '):
+            parts = line[4:].split(',', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            if name in variables and isinstance(variables[name], list):
+                variables[name].remove(value)
+            i += 1
+            continue
+
+        # sort
+        if line.startswith('sort '):
+            name = line[5:].strip()
+            if name in variables and isinstance(variables[name], list):
+                variables[name].sort()
+            i += 1
+            continue
+
+        # reverse
+        if line.startswith('reverse '):
+            name = line[8:].strip()
+            if name in variables and isinstance(variables[name], list):
+                variables[name].reverse()
+            i += 1
+            continue
+
+        # first
+        if line.startswith('first '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            lst = resolve(parts[1].strip(), variables)
+            if isinstance(lst, list):
+                variables[name] = lst[0]
+            i += 1
+            continue
+
+        # last
+        if line.startswith('last '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            lst = resolve(parts[1].strip(), variables)
+            if isinstance(lst, list):
+                variables[name] = lst[-1]
+            i += 1
+            continue
+
+        # dict
+        if line.startswith('dict '):
+            name = line[5:].strip()
+            variables[name] = {}
+            i += 1
+            continue
+
+        # dadd
+        if line.startswith('dadd '):
+            parts = line[5:].split(',')
+            name = parts[0].strip()
+            key = parts[1].strip().strip('"')
+            value = resolve(parts[2].strip(), variables)
+            if name in variables:
+                variables[name][key] = value
+            i += 1
+            continue
+
+        # dget
+        if line.startswith('dget '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            items = parts[1].strip().split(',')
+            dname = items[0].strip()
+            key = items[1].strip().strip('"')
+            variables[name] = variables.get(dname, {}).get(key)
+            i += 1
+            continue
+
+        # dkeys
+        if line.startswith('dkeys '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            dname = parts[1].strip()
+            variables[name] = list(variables.get(dname, {}).keys())
+            i += 1
+            continue
+
+        # dvals
+        if line.startswith('dvals '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            dname = parts[1].strip()
+            variables[name] = list(variables.get(dname, {}).values())
+            i += 1
+            continue
+
+        # ddel
+        if line.startswith('ddel '):
+            parts = line[5:].split(',')
+            name = parts[0].strip()
+            key = parts[1].strip().strip('"')
+            if name in variables:
+                variables[name].pop(key, None)
+            i += 1
+            continue
+
+        # count
+        if line.startswith('count '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            items = parts[1].strip().split(',')
+            lst = resolve(items[0].strip(), variables)
+            value = resolve(items[1].strip(), variables)
+            variables[name] = lst.count(value) if isinstance(lst, list) else str(lst).count(str(value))
+            i += 1
+            continue
+
+        # index
+        if line.startswith('index '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            items = parts[1].strip().split(',')
+            lst = resolve(items[0].strip(), variables)
+            value = resolve(items[1].strip(), variables)
+            variables[name] = lst.index(value) if isinstance(lst, list) else -1
+            i += 1
+            continue
+
+        # insert
+        if line.startswith('insert '):
+            parts = line[7:].split(',')
+            name = parts[0].strip()
+            idx = int(resolve(parts[1].strip(), variables))
+            value = resolve(parts[2].strip(), variables)
+            if name in variables and isinstance(variables[name], list):
+                variables[name].insert(idx, value)
+            i += 1
+            continue
+
+        # clear
+        if line.startswith('clear '):
+            name = line[6:].strip()
+            if name == 'screen':
+                os.system('clear')
+            elif name in variables and isinstance(variables[name], list):
+                variables[name].clear()
+            i += 1
+            continue
+
+        # copy
+        if line.startswith('copy '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            if isinstance(value, list):
+                variables[name] = value.copy()
+            i += 1
+            continue
+
+        # exp (extend)
+        if line.startswith('exp '):
+            parts = line[4:].split(',', 1)
+            name = parts[0].strip()
+            other = resolve(parts[1].strip(), variables)
+            if name in variables and isinstance(variables[name], list):
+                variables[name].extend(other)
+            i += 1
+            continue
+
+        # slice
+        if line.startswith('slice '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            items = parts[1].strip().split(',')
+            lst = resolve(items[0].strip(), variables)
+            a = int(resolve(items[1].strip(), variables))
+            b = int(resolve(items[2].strip(), variables))
+            variables[name] = lst[a:b]
+            i += 1
+            continue
+
+        # pow
+        if line.startswith('pow '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            items = parts[1].strip().split(',')
+            a = float(resolve(items[0].strip(), variables))
+            b = float(resolve(items[1].strip(), variables))
+            variables[name] = a ** b
+            i += 1
+            continue
+
+        # sqrt
+        if line.startswith('sqrt '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            value = float(resolve(parts[1].strip(), variables))
+            variables[name] = math.sqrt(value)
+            i += 1
+            continue
+
+        # sin
+        if line.startswith('sin '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            value = float(resolve(parts[1].strip(), variables))
+            variables[name] = math.sin(value)
+            i += 1
+            continue
+
+        # cos
+        if line.startswith('cos '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            value = float(resolve(parts[1].strip(), variables))
+            variables[name] = math.cos(value)
+            i += 1
+            continue
+
+        # pi
+        if line.startswith('pi '):
+            name = line[3:].strip()
+            variables[name] = math.pi
+            i += 1
+            continue
+
+        # log
+        if line.startswith('log '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            value = float(resolve(parts[1].strip(), variables))
+            variables[name] = math.log(value)
+            i += 1
+            continue
+
+        # shuffle
+        if line.startswith('shuffle '):
+            name = line[8:].strip()
+            if name in variables and isinstance(variables[name], list):
+                random.shuffle(variables[name])
+            i += 1
+            continue
+
+        # choice
+        if line.startswith('choice '):
+            parts = line[7:].split('=', 1)
+            name = parts[0].strip()
+            lst = resolve(parts[1].strip(), variables)
+            variables[name] = random.choice(lst)
+            i += 1
+            continue
+
+        # fadd
+        if line.startswith('fadd '):
+            parts = line[5:].split('=', 1)
+            filename = parts[0].strip()
+            value = parts[1].strip()
+            if value in variables:
+                value = str(variables[value])
+            elif value.startswith('"') and value.endswith('"'):
+                value = value[1:-1]
+            with open(filename, 'a') as f:
+                f.write(value + '\n')
+            i += 1
+            continue
+
+        # fdel
+        if line.startswith('fdel '):
+            filename = line[5:].strip().strip('"')
+            os.remove(filename)
+            i += 1
+            continue
+
+        # mkdr
+        if line.startswith('mkdr '):
+            dirname = line[5:].strip().strip('"')
+            os.makedirs(dirname, exist_ok=True)
+            i += 1
+            continue
+
+        # rmdr
+        if line.startswith('rmdr '):
+            dirname = line[5:].strip().strip('"')
+            os.rmdir(dirname)
+            i += 1
+            continue
+
+        # flist
+        if line.startswith('flist '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            path = parts[1].strip().strip('"') if len(parts) > 1 else '.'
+            variables[name] = os.listdir(path)
+            i += 1
+            continue
+
+        # fex
+        if line.startswith('fex '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            path = parts[1].strip().strip('"')
+            variables[name] = os.path.exists(path)
+            i += 1
+            continue
+
+        # curdr
+        if line.startswith('curdr '):
+            name = line[6:].strip()
+            variables[name] = os.getcwd()
+            i += 1
+            continue
+
+        # godr
+        if line.startswith('godr '):
+            path = line[5:].strip().strip('"')
+            os.chdir(path)
+            i += 1
+            continue
+
+        # sys
+        if line.startswith('sys '):
+            cmd = line[4:].strip().strip('"')
+            os.system(cmd)
+            i += 1
+            continue
+
+        # env
+        if line.startswith('env '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            key = parts[1].strip().strip('"')
+            variables[name] = os.environ.get(key, '')
+            i += 1
+            continue
+
+        # pause
+        if line == 'pause':
+            input('Нажми Enter чтобы продолжить...')
+            i += 1
+            continue
+
+        # fsize
+        if line.startswith('fsize '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            path = parts[1].strip().strip('"')
+            variables[name] = os.path.getsize(path)
+            i += 1
+            continue
+
+        # fren
+        if line.startswith('fren '):
+            parts = line[5:].split(',')
+            old = parts[0].strip().strip('"')
+            new = parts[1].strip().strip('"')
+            os.rename(old, new)
+            i += 1
+            continue
+
+        # fcopy
+        if line.startswith('fcopy '):
+            parts = line[6:].split(',')
+            src = parts[0].strip().strip('"')
+            dst = parts[1].strip().strip('"')
+            shutil.copy(src, dst)
+            i += 1
+            continue
+
+        # wget
+        if line.startswith('wget '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            url = parts[1].strip().strip('"')
+            if HAS_REQUESTS:
+                variables[name] = requests.get(url).text
+            else:
+                variables[name] = 'requests not installed'
+            i += 1
+            continue
+
+        # wpost
+        if line.startswith('wpost '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            items = parts[1].strip().split(',', 1)
+            url = items[0].strip().strip('"')
+            data = resolve(items[1].strip(), variables) if len(items) > 1 else {}
+            if HAS_REQUESTS:
+                variables[name] = requests.post(url, data=data).text
+            else:
+                variables[name] = 'requests not installed'
+            i += 1
+            continue
+
+        # jget
+        if line.startswith('jget '):
+            parts = line[5:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = json.loads(str(value))
+            i += 1
+            continue
+
+        # jmake
+        if line.startswith('jmake '):
+            parts = line[6:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = json.dumps(value)
+            i += 1
+            continue
+
+        # b64
+        if line.startswith('b64 '):
+            parts = line[4:].split('=', 1)
+            name = parts[0].strip()
+            value = resolve(parts[1].strip(), variables)
+            variables[name] = base64.b64encode(str(value).encode()).decode()
             i += 1
             continue
 
