@@ -1,0 +1,10 @@
+save тест.txt = "Привет Kide"
+zipc архив.zip, тест.txt
+fex есть = "архив.zip"
+pirent есть
+
+refind а = "K\w+", "Привет Kide язык"
+pirent а
+
+resub б = "язык", "программирования", "Kide язык"
+pirent б

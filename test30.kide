@@ -1,0 +1,13 @@
+ret текст = "Привет Kide"
+starts а = текст, "Привет"
+pirent а
+
+ends б = текст, "Kide"
+pirent б
+
+fmt в = "Меня зовут {0} и мне {1} лет", "Said", 20
+pirent в
+
+list слова = "Привет", "мир", "Kide"
+joins г = " ", слова
+pirent г

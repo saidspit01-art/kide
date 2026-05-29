@@ -1,0 +1,14 @@
+rang числа = 1, 6
+pirent числа
+
+maxl макс = числа
+pirent макс
+
+minl мин = числа
+pirent мин
+
+som среднее = числа
+pirent среднее
+
+each элемент, числа:
+    pirent элемент

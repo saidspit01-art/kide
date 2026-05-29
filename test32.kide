@@ -1,0 +1,18 @@
+hash а = "Привет"
+pirent а
+
+uuid б
+pirent б
+
+platform в
+pirent в
+
+list числа = 1, 2, 3
+islist г = числа
+pirent г
+
+isstr д = "текст"
+pirent д
+
+isint е = 42
+pirent e
